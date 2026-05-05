@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Not Hesaplama Aracı</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0fdf4;
+        }
+        @keyframes kutlama {
+            0% { transform: scale(0.9); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animasyon-kutla {
+            animation: kutlama 0.5s ease-out forwards;
+        }
+        
+        /* Sarı - Kırmızı Süslerin Düşme Animasyonu */
+        .sus {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #fbbf24; /* Sarı */
+            opacity: 0;
+            border-radius: 50%;
+            animation: dus 1.5s ease-out infinite;
+        }
+        .sus-kirmizi {
+            background-color: #dc2626; /* Kırmızı */
+        }
+        @keyframes dus {
+            0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(150px) rotate(720deg); opacity: 0; }
+        }
+
+        /* 4 Saniye Sonra Durma ve Kaybolma Animasyonu */
+        @keyframes susKapat {
+            0% { opacity: 1; }
+            100% { opacity: 0; pointer-events: none; }
+        }
+        .sus-kapat-animasyonu {
+            animation: susKapat 1s ease-in-out forwards;
+            animation-delay: 4s; /* Süsler 4 saniye sonra kapanmaya başlar */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+
+    <div id="arkaPlanSusAlani" class="absolute inset-0 pointer-events-none z-0"></div>
+
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 border-t-8 border-emerald-600 relative z-10">
+        
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-emerald-800 tracking-wider">NOT HESAPLAMA ARACI</h1>
+            <p class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-medium">Uzaktan Eğitim Bilgi Sistemi</p>
+        </div>
+
+        <h2 class="text-2xl font-bold text-gray-700 text-center mb-6">Harf Notu ve Ortalama Hesaplama</h2>
+        
+        <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl mb-6 text-center text-emerald-800 text-sm font-medium shadow-sm relative z-10">
+            📌 <b>Geçme Notu Kuralı:</b> Ortalama 60 ve üzerinde olmalıdır.<br>
+            <span class="text-xs text-emerald-600">DC ve DD (45-59) harf notları <b>"Koşullu Geçti"</b> olarak değerlendirilmektedir.</span>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6 relative z-10">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Vize Notu (%40):</label>
+                <input type="number" id="vize" placeholder="Örn: 70" min="0" max="100"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition duration-200">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Final Notu (%60):</label>
+                <input type="number" id="final" placeholder="Örn: 80" min="0" max="100"
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition duration-200">
+            </div>
+        </div>
+
+        <button onclick="hesapla()" 
+                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition duration-300 cursor-pointer relative z-10">
+            Hesapla
+        </button>
+
+        <div id="sonucAlani" class="mt-8 hidden p-5 rounded-xl border transition-all duration-300 relative overflow-hidden z-10">
+            <div class="flex items-center justify-between mb-4">
+                <span class="text-gray-600 text-lg font-medium">Dönem Ortalaması:</span>
+                <span id="ortalama" class="text-3xl font-extrabold text-gray-900">0.00</span>
+            </div>
+            <div class="flex items-center justify-between border-t border-gray-200 pt-4">
+                <span class="text-gray-600 text-lg font-medium">Durum:</span>
+                <span id="durum" class="text-3xl font-extrabold">-</span>
+            </div>
+            <div class="flex items-center justify-between mt-3">
+                <span class="text-gray-600 text-base">Harf Karşılığı:</span>
+                <span id="harfNotu" class="text-xl font-bold text-gray-800">-</span>
+            </div>
+            
+            <div id="uyariAlani" class="mt-5 hidden p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+                <span id="uyariMesaji"></span>
+            </div>
+
+            <div id="kutlamaAlani" class="mt-6 hidden text-center border-t border-emerald-200 pt-4 relative">
+                <p id="kutlamaMesaji" class="text-lg font-bold text-emerald-700">Tebrikler Dersi Geçtiniz! 🎉</p>
+                <div id="susAlani" class="absolute inset-0 pointer-events-none"></div>
+            </div>
+        </div>
+
+        <div class="mt-10 border-t border-gray-100 pt-6 relative z-10">
+            <h3 class="text-sm font-bold text-gray-600 mb-3 tracking-wide uppercase text-center">Not Katsayıları ve Aralıkları</h3>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs text-gray-600">
+                <div class="bg-gray-50 p-2 rounded-lg border"><b>AA</b>: 90-100</div>
+                <div class="bg-gray-50 p-2 rounded-lg border"><b>BA</b>: 85-89</div>
+                <div class="bg-gray-50 p-2 rounded-lg border"><b>BB</b>: 75-84</div>
+                <div class="bg-gray-50 p-2 rounded-lg border"><b>CB</b>: 70-74</div>
+                <div class="bg-gray-50 p-2 rounded-lg border"><b>CC</b>: 60-69</div>
+                <div class="bg-gray-50 p-2 rounded-lg border bg-amber-50"><b>DC</b>: 55-59</div>
+                <div class="bg-gray-50 p-2 rounded-lg border bg-amber-50"><b>DD</b>: 45-54</div>
+                <div class="bg-gray-50 p-2 rounded-lg border"><b>FD</b>: 40-44</div>
+                <div class="bg-gray-50 p-2 rounded-lg border"><b>FF / FZ</b>: 0-39</div>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-200 mt-10 pt-4 text-center text-xs text-gray-400 font-medium tracking-wide relative z-10">
+            Hazırlayan: İsmail KARDAŞ
+        </div>
+    </div>
+
+    <script>
+        function hesapla() {
+            var vize = document.getElementById("vize").value;
+            var final = document.getElementById("final").value;
+
+            if (vize === "" || final === "") {
+                alert("Lütfen hem vize hem de final notlarını eksiksiz girin.");
+                return;
+            }
+
+            var vizeNot = parseFloat(vize);
+            var finalNot = parseFloat(final);
+
+            if (vizeNot < 0 || vizeNot > 100 || finalNot < 0 || finalNot > 100) {
+                alert("Lütfen 0 ile 100 arasında geçerli bir not girin.");
+                return;
+            }
+
+            var ortalama = (vizeNot * 0.40) + (finalNot * 0.60);
+
+            var harf = "";
+            if (ortalama >= 90) {
+                harf = "AA";
+            } else if (ortalama >= 85) {
+                harf = "BA";
+            } else if (ortalama >= 75) {
+                harf = "BB";
+            } else if (ortalama >= 70) {
+                harf = "CB";
+            } else if (ortalama >= 60) {
+                harf = "CC";
+            } else if (ortalama >= 55) {
+                harf = "DC";
+            } else if (ortalama >= 45) {
+                harf = "DD";
+            } else if (ortalama >= 40) {
+                harf = "FD";
+            } else {
+                harf = "FF / FZ";
+            }
+
+            document.getElementById("ortalama").innerText = ortalama.toFixed(2);
+            document.getElementById("harfNotu").innerText = harf;
+
+            var sonucAlani = document.getElementById("sonucAlani");
+            var durumSpan = document.getElementById("durum");
+            var kutlamaAlani = document.getElementById("kutlamaAlani");
+            var kutlamaMesaji = document.getElementById("kutlamaMesaji");
+            var uyariAlani = document.getElementById("uyariAlani");
+            var uyariMesaji = document.getElementById("uyariMesaji");
+            var susAlani = document.getElementById("susAlani");
+            var arkaPlanSusAlani = document.getElementById("arkaPlanSusAlani");
+
+            sonucAlani.classList.remove("hidden");
+            kutlamaAlani.classList.add("hidden");
+            uyariAlani.classList.add("hidden");
+            arkaPlanSusAlani.innerHTML = "";
+            susAlani.innerHTML = "";
+
+            // Durma animasyonlarını temizle
+            arkaPlanSusAlani.classList.remove("sus-kapat-animasyonu");
+            susAlani.classList.remove("sus-kapat-animasyonu");
+
+            var gerekliFinalNotu = Math.ceil((60 - (vizeNot * 0.40)) / 0.60);
+            if (gerekliFinalNotu > 100) gerekliFinalNotu = 100;
+
+            if (ortalama >= 60) {
+                sonucAlani.className = "mt-8 p-5 rounded-xl border bg-green-50 border-green-200 animasyon-kutla relative overflow-hidden";
+                durumSpan.innerText = "Geçti";
+                durumSpan.className = "text-green-600 font-extrabold text-3xl";
+                
+                kutlamaAlani.classList.remove("hidden");
+                kutlamaMesaji.innerHTML = "Tebrikler Dersi Geçtiniz! 🎉";
+
+                for (var i = 0; i < 50; i++) {
+                    createSus(susAlani);
+                }
+                for (var i = 0; i < 100; i++) {
+                    createSus(arkaPlanSusAlani, true);
+                }
+
+                arkaPlanSusAlani.classList.add("sus-kapat-animasyonu");
+                susAlani.classList.add("sus-kapat-animasyonu");
+
+            } else if (harf === "DC" || harf === "DD") {
+                sonucAlani.className = "mt-8 p-5 rounded-xl border bg-amber-50 border-amber-200 relative overflow-hidden";
+                durumSpan.innerText = "Koşullu Geçti";
+                durumSpan.className = "text-amber-600 font-extrabold text-3xl";
+                
+                uyariAlani.classList.remove("hidden");
+                uyariMesaji.innerText = "Geçme notunuz 60'ın altında ancak notunuz koşullu başarılı sayılıyor. Ortalamanızı 60'a yükseltmek için finalden en az " + gerekliFinalNotu + " almanız gerekir.";
+
+                kutlamaAlani.classList.remove("hidden");
+                kutlamaMesaji.innerHTML = "Tebrikler, Koşullu Başarılı Sayıldınız! 🎉";
+
+                for (var i = 0; i < 50; i++) {
+                    createSus(susAlani);
+                }
+                for (var i = 0; i < 100; i++) {
+                    createSus(arkaPlanSusAlani, true);
+                }
+
+                arkaPlanSusAlani.classList.add("sus-kapat-animasyonu");
+                susAlani.classList.add("sus-kapat-animasyonu");
+                
+            } else {
+                sonucAlani.className = "mt-8 p-5 rounded-xl border bg-red-50 border-red-200";
+                durumSpan.innerText = "Kaldı";
+                durumSpan.className = "text-red-600 font-extrabold text-3xl";
+
+                uyariAlani.classList.remove("hidden");
+                if (gerekliFinalNotu <= 100) {
+                     uyariMesaji.innerText = "Kaldınız. Geçme notunu tutturabilmek için finalden en az " + gerekliFinalNotu + " almalısınız.";
+                } else {
+                     uyariMesaji.innerText = "Bu vize notuyla dersi geçmek maalesef mümkün değildir.";
+                }
+            }
+        }
+
+        function createSus(container, isArkaPlan = false) {
+            var s = document.createElement("div");
+            s.className = "sus";
+            if (Math.random() > 0.5) s.classList.add("sus-kirmizi");
+            
+            s.style.left = Math.random() * 100 + "%";
+            s.style.animationDelay = (Math.random() * 1.5) + "s";
+            
+            if (isArkaPlan) {
+                s.style.top = (Math.random() * 20 - 20) + "px";
+                container.appendChild(s);
+            } else {
+                container.appendChild(s);
+            }
+        }
+    </script>
+</body>
+</html>
